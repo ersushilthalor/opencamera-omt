@@ -16,7 +16,13 @@ import android.util.Log;
 public class CameraControllerManager1 extends CameraControllerManager {
     private static final String TAG = "CControllerManager1";
     public int getNumberOfCameras() {
-        return Camera.getNumberOfCameras();
+        try {
+            return Camera.getNumberOfCameras();
+        }
+        catch(Throwable e) {
+            MyDebug.logStackTrace(TAG, "failed to get number of cameras", e);
+            return 0;
+        }
     }
 
     @Override

@@ -68,10 +68,17 @@ public class GyroSensor implements SensorEventListener {
     private int is_upright; // if hasTarget==true, this stores whether the "upright" orientation of the device is close enough to the orientation when recording was started: 0 for yes, otherwise -1 for too anti-clockwise, +1 for too clockwise
 
     GyroSensor(Context context) {
-        mSensorManager = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
+        SensorManager sm = null;
+        try {
+            sm = (SensorManager)context.getSystemService(Context.SENSOR_SERVICE);
+        }
+        catch(Throwable t) {
+            Log.e(TAG, "failed to get SENSOR_SERVICE", t);
+        }
+        mSensorManager = sm;
 
-        mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-        mSensorAccel = mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
+        mSensor = mSensorManager != null ? mSensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE) : null;
+        mSensorAccel = mSensorManager != null ? mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) : null;
 
         //mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);
         //mSensor = mSensorManager.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);
@@ -169,16 +176,30 @@ public class GyroSensor implements SensorEventListener {
             gyroVector[i] = 0.0f;
         }
 
-        if( mSensor != null )
-            mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_UI);
-        if( mSensorAccel != null )
-            mSensorManager.registerListener(this, mSensorAccel, SensorManager.SENSOR_DELAY_UI);
+        if( mSensorManager != null ) {
+            try {
+                if( mSensor != null )
+                    mSensorManager.registerListener(this, mSensor, SensorManager.SENSOR_DELAY_UI);
+                if( mSensorAccel != null )
+                    mSensorManager.registerListener(this, mSensorAccel, SensorManager.SENSOR_DELAY_UI);
+            }
+            catch(Throwable t) {
+                Log.e(TAG, "failed to register gyro sensor listener", t);
+            }
+        }
     }
 
     void disableSensors() {
         if( MyDebug.LOG )
             Log.d(TAG, "disableSensors");
-        mSensorManager.unregisterListener(this);
+        if( mSensorManager != null ) {
+            try {
+                mSensorManager.unregisterListener(this);
+            }
+            catch(Throwable t) {
+                Log.e(TAG, "failed to unregister gyro sensor listener", t);
+            }
+        }
     }
 
     void startRecording() {

@@ -30,14 +30,19 @@ class MagneticSensor {
     void initSensor(final SensorManager mSensorManager) {
         if( MyDebug.LOG )
             Log.d(TAG, "initSensor");
-        if( mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) != null ) {
-            if( MyDebug.LOG )
-                Log.d(TAG, "found magnetic sensor");
-            mSensorMagnetic = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+        try {
+            if( mSensorManager != null && mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD) != null ) {
+                if( MyDebug.LOG )
+                    Log.d(TAG, "found magnetic sensor");
+                mSensorMagnetic = mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
+            }
+            else {
+                if( MyDebug.LOG )
+                    Log.d(TAG, "no support for magnetic sensor");
+            }
         }
-        else {
-            if( MyDebug.LOG )
-                Log.d(TAG, "no support for magnetic sensor");
+        catch(Throwable t) {
+            Log.e(TAG, "Exception initializing magnetic sensor", t);
         }
     }
 
@@ -48,30 +53,37 @@ class MagneticSensor {
      *  then it is unregistered.
      */
     void registerMagneticListener(final SensorManager mSensorManager) {
-        SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
-        if( !magneticListenerIsRegistered ) {
-            if( needsMagneticSensor(sharedPreferences) ) {
-                if( MyDebug.LOG )
-                    Log.d(TAG, "register magneticListener");
-                mSensorManager.registerListener(magneticListener, mSensorMagnetic, SensorManager.SENSOR_DELAY_NORMAL);
-                magneticListenerIsRegistered = true;
+        if( mSensorManager == null || mSensorMagnetic == null )
+            return;
+        try {
+            SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(main_activity);
+            if( !magneticListenerIsRegistered ) {
+                if( needsMagneticSensor(sharedPreferences) ) {
+                    if( MyDebug.LOG )
+                        Log.d(TAG, "register magneticListener");
+                    mSensorManager.registerListener(magneticListener, mSensorMagnetic, SensorManager.SENSOR_DELAY_NORMAL);
+                    magneticListenerIsRegistered = true;
+                }
+                else {
+                    if( MyDebug.LOG )
+                        Log.d(TAG, "don't register magneticListener as not needed");
+                }
             }
             else {
-                if( MyDebug.LOG )
-                    Log.d(TAG, "don't register magneticListener as not needed");
+                if( needsMagneticSensor(sharedPreferences) ) {
+                    if( MyDebug.LOG )
+                        Log.d(TAG, "magneticListener already registered");
+                }
+                else {
+                    if( MyDebug.LOG )
+                        Log.d(TAG, "magneticListener already registered but no longer needed");
+                    mSensorManager.unregisterListener(magneticListener);
+                    magneticListenerIsRegistered = false;
+                }
             }
         }
-        else {
-            if( needsMagneticSensor(sharedPreferences) ) {
-                if( MyDebug.LOG )
-                    Log.d(TAG, "magneticListener already registered");
-            }
-            else {
-                if( MyDebug.LOG )
-                    Log.d(TAG, "magneticListener already registered but no longer needed");
-                mSensorManager.unregisterListener(magneticListener);
-                magneticListenerIsRegistered = false;
-            }
+        catch(Throwable t) {
+            Log.e(TAG, "Exception registering magnetic listener", t);
         }
     }
 
@@ -81,7 +93,14 @@ class MagneticSensor {
         if( magneticListenerIsRegistered ) {
             if( MyDebug.LOG )
                 Log.d(TAG, "unregister magneticListener");
-            mSensorManager.unregisterListener(magneticListener);
+            if( mSensorManager != null ) {
+                try {
+                    mSensorManager.unregisterListener(magneticListener);
+                }
+                catch(Throwable t) {
+                    Log.e(TAG, "Exception unregistering magnetic listener", t);
+                }
+            }
             magneticListenerIsRegistered = false;
         }
         else {

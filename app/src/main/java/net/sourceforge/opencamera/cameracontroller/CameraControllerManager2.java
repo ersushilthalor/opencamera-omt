@@ -25,9 +25,12 @@ public class CameraControllerManager2 extends CameraControllerManager {
 
     @Override
     public int getNumberOfCameras() {
-        CameraManager manager = (CameraManager)context.getSystemService(Context.CAMERA_SERVICE);
         try {
-            return manager.getCameraIdList().length;
+            CameraManager manager = (CameraManager)context.getSystemService(Context.CAMERA_SERVICE);
+            if( manager == null )
+                return 0;
+            String[] list = manager.getCameraIdList();
+            return list != null ? list.length : 0;
         }
         catch(Throwable e) {
             // in theory we should only get CameraAccessException, but Google Play shows we can get a variety of exceptions
@@ -41,19 +44,27 @@ public class CameraControllerManager2 extends CameraControllerManager {
 
     @Override
     public CameraController.Facing getFacing(int cameraId) {
-        CameraManager manager = (CameraManager)context.getSystemService(Context.CAMERA_SERVICE);
         try {
-            String cameraIdS = manager.getCameraIdList()[cameraId];
+            CameraManager manager = (CameraManager)context.getSystemService(Context.CAMERA_SERVICE);
+            if( manager == null )
+                return CameraController.Facing.FACING_UNKNOWN;
+            String[] list = manager.getCameraIdList();
+            if( list == null || cameraId < 0 || cameraId >= list.length )
+                return CameraController.Facing.FACING_UNKNOWN;
+            String cameraIdS = list[cameraId];
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraIdS);
-            switch( characteristics.get(CameraCharacteristics.LENS_FACING) ) {
-                case CameraMetadata.LENS_FACING_FRONT:
-                    return CameraController.Facing.FACING_FRONT;
-                case CameraMetadata.LENS_FACING_BACK:
-                    return CameraController.Facing.FACING_BACK;
-                case CameraMetadata.LENS_FACING_EXTERNAL:
-                    return CameraController.Facing.FACING_EXTERNAL;
+            Integer facing = characteristics.get(CameraCharacteristics.LENS_FACING);
+            if( facing != null ) {
+                switch( facing ) {
+                    case CameraMetadata.LENS_FACING_FRONT:
+                        return CameraController.Facing.FACING_FRONT;
+                    case CameraMetadata.LENS_FACING_BACK:
+                        return CameraController.Facing.FACING_BACK;
+                    case CameraMetadata.LENS_FACING_EXTERNAL:
+                        return CameraController.Facing.FACING_EXTERNAL;
+                }
             }
-            Log.e(TAG, "unknown camera_facing: " + characteristics.get(CameraCharacteristics.LENS_FACING));
+            Log.e(TAG, "unknown camera_facing: " + (facing != null ? facing : "null"));
         }
         catch(Throwable e) {
             // in theory we should only get CameraAccessException, but Google Play shows we can get a variety of exceptions
@@ -227,9 +238,14 @@ public class CameraControllerManager2 extends CameraControllerManager {
      * This returns whether the specified camera has at least LIMITED support.
      */
     public boolean allowCamera2Support(int cameraId) {
-        CameraManager manager = (CameraManager)context.getSystemService(Context.CAMERA_SERVICE);
         try {
-            String cameraIdS = manager.getCameraIdList()[cameraId];
+            CameraManager manager = (CameraManager)context.getSystemService(Context.CAMERA_SERVICE);
+            if( manager == null )
+                return false;
+            String[] list = manager.getCameraIdList();
+            if( list == null || cameraId < 0 || cameraId >= list.length )
+                return false;
+            String cameraIdS = list[cameraId];
             CameraCharacteristics characteristics = manager.getCameraCharacteristics(cameraIdS);
             //return isHardwareLevelSupported(characteristics, CameraMetadata.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY);
             return isHardwareLevelSupported(characteristics, CameraMetadata.INFO_SUPPORTED_HARDWARE_LEVEL_LIMITED);

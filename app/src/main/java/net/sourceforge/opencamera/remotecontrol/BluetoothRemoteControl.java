@@ -242,54 +242,64 @@ public class BluetoothRemoteControl {
         // Check isAppPaused() just to be safe - in theory shouldn't be needed, but don't want to
         // start up the service if we're in background! (And we might as well then try to stop the
         // service instead.)
-        if( !main_activity.isAppPaused() && remoteEnabled() ) {
-            if( MyDebug.LOG )
-                Log.d(TAG, "Remote enabled, starting service");
-            main_activity.bindService(gattServiceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
-            // For Android 14 (UPSIDE_DOWN_CAKE) onwards, a flag of RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED must be specified when using
-            // registerReceiver with non-system intents, otherwise a SecurityException will be thrown.
-            // The if condition is for TIRAMISU as there seems no harm doing this for earlier versions too, but RECEIVER_NOT_EXPORTED
-            // requires Android 13.
-            if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ) {
-                main_activity.registerReceiver(remoteControlCommandReceiver, makeRemoteCommandIntentFilter(), RECEIVER_NOT_EXPORTED);
+        try {
+            if( !main_activity.isAppPaused() && remoteEnabled() ) {
+                if( MyDebug.LOG )
+                    Log.d(TAG, "Remote enabled, starting service");
+                main_activity.bindService(gattServiceIntent, mServiceConnection, Context.BIND_AUTO_CREATE);
+                // For Android 14 (UPSIDE_DOWN_CAKE) onwards, a flag of RECEIVER_EXPORTED or RECEIVER_NOT_EXPORTED must be specified when using
+                // registerReceiver with non-system intents, otherwise a SecurityException will be thrown.
+                // The if condition is for TIRAMISU as there seems no harm doing this for earlier versions too, but RECEIVER_NOT_EXPORTED
+                // requires Android 13.
+                if( Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU ) {
+                    main_activity.registerReceiver(remoteControlCommandReceiver, makeRemoteCommandIntentFilter(), RECEIVER_NOT_EXPORTED);
+                }
+                else {
+                    // n.b., this gets an Android lint warning, even though this can only be fixed for TIRAMISU onwards (as
+                    // RECEIVER_NOT_EXPORTED not available on older versions)!
+                    main_activity.registerReceiver(remoteControlCommandReceiver, makeRemoteCommandIntentFilter());
+                }
             }
             else {
-                // n.b., this gets an Android lint warning, even though this can only be fixed for TIRAMISU onwards (as
-                // RECEIVER_NOT_EXPORTED not available on older versions)!
-                main_activity.registerReceiver(remoteControlCommandReceiver, makeRemoteCommandIntentFilter());
+                if( MyDebug.LOG )
+                    Log.d(TAG, "Remote disabled, stopping service");
+                // Stop the service if necessary
+                try {
+                    main_activity.unregisterReceiver(remoteControlCommandReceiver);
+                    main_activity.unbindService(mServiceConnection);
+                    is_connected = false; // Unbinding closes the connection, of course
+                    main_activity.getMainUI().updateRemoteConnectionIcon();
+                }
+                catch(IllegalArgumentException e){
+                    if( MyDebug.LOG )
+                        Log.d(TAG, "Remote Service was not running, that's fine");
+                }
             }
         }
-        else {
-            if( MyDebug.LOG )
-                Log.d(TAG, "Remote disabled, stopping service");
-            // Stop the service if necessary
-            try {
-                main_activity.unregisterReceiver(remoteControlCommandReceiver);
-                main_activity.unbindService(mServiceConnection);
-                is_connected = false; // Unbinding closes the connection, of course
-                main_activity.getMainUI().updateRemoteConnectionIcon();
-            }
-            catch(IllegalArgumentException e){
-                if( MyDebug.LOG )
-                    Log.d(TAG, "Remote Service was not running, that's fine");
-            }
+        catch(Throwable t) {
+            Log.e(TAG, "Exception in startRemoteControl", t);
         }
     }
 
     public void stopRemoteControl() {
         if( MyDebug.LOG )
             Log.d(TAG, "BLE Remote control service shutdown...");
-        if( remoteEnabled()) {
-            // Stop the service if necessary
-            try {
-                main_activity.unregisterReceiver(remoteControlCommandReceiver);
-                main_activity.unbindService(mServiceConnection);
-                is_connected = false; // Unbinding closes the connection, of course
-                main_activity.getMainUI().updateRemoteConnectionIcon();
+        try {
+            if( remoteEnabled()) {
+                // Stop the service if necessary
+                try {
+                    main_activity.unregisterReceiver(remoteControlCommandReceiver);
+                    main_activity.unbindService(mServiceConnection);
+                    is_connected = false; // Unbinding closes the connection, of course
+                    main_activity.getMainUI().updateRemoteConnectionIcon();
+                }
+                catch(IllegalArgumentException e){
+                    MyDebug.logStackTrace(TAG, "Remote Service was not running, that's strange", e);
+                }
             }
-            catch(IllegalArgumentException e){
-                MyDebug.logStackTrace(TAG, "Remote Service was not running, that's strange", e);
-            }
+        }
+        catch(Throwable t) {
+            Log.e(TAG, "Exception in stopRemoteControl", t);
         }
     }
 

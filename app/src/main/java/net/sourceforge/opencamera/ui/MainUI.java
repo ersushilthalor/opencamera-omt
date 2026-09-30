@@ -123,37 +123,29 @@ public class MainUI {
     private void setSeekbarColors() {
         if (MyDebug.LOG)
             Log.d(TAG, "setSeekbarColors");
-        {
+        try {
             ColorStateList progress_color = ColorStateList.valueOf(Color.argb(255, 240, 240, 240));
             ColorStateList thumb_color = ColorStateList.valueOf(Color.argb(255, 255, 255, 255));
 
-            SeekBar seekBar = main_activity.findViewById(R.id.zoom_seekbar);
-            seekBar.setProgressTintList(progress_color);
-            seekBar.setThumbTintList(thumb_color);
-
-            seekBar = main_activity.findViewById(R.id.focus_seekbar);
-            seekBar.setProgressTintList(progress_color);
-            seekBar.setThumbTintList(thumb_color);
-
-            seekBar = main_activity.findViewById(R.id.focus_bracketing_target_seekbar);
-            seekBar.setProgressTintList(progress_color);
-            seekBar.setThumbTintList(thumb_color);
-
-            seekBar = main_activity.findViewById(R.id.exposure_seekbar);
-            seekBar.setProgressTintList(progress_color);
-            seekBar.setThumbTintList(thumb_color);
-
-            seekBar = main_activity.findViewById(R.id.iso_seekbar);
-            seekBar.setProgressTintList(progress_color);
-            seekBar.setThumbTintList(thumb_color);
-
-            seekBar = main_activity.findViewById(R.id.exposure_time_seekbar);
-            seekBar.setProgressTintList(progress_color);
-            seekBar.setThumbTintList(thumb_color);
-
-            seekBar = main_activity.findViewById(R.id.white_balance_seekbar);
-            seekBar.setProgressTintList(progress_color);
-            seekBar.setThumbTintList(thumb_color);
+            int[] seekbarIds = new int[] {
+                R.id.zoom_seekbar,
+                R.id.focus_seekbar,
+                R.id.focus_bracketing_target_seekbar,
+                R.id.exposure_seekbar,
+                R.id.iso_seekbar,
+                R.id.exposure_time_seekbar,
+                R.id.white_balance_seekbar
+            };
+            for (int id : seekbarIds) {
+                SeekBar seekBar = main_activity.findViewById(id);
+                if (seekBar != null) {
+                    seekBar.setProgressTintList(progress_color);
+                    seekBar.setThumbTintList(thumb_color);
+                }
+            }
+        }
+        catch(Throwable t) {
+            Log.e(TAG, "Error in setSeekbarColors", t);
         }
     }
 
@@ -3579,122 +3571,127 @@ public class MainUI {
     public void initPixelCameraUI() {
         if (main_activity == null) return;
 
-        // Switch to Photo button
-        View btnPhoto = main_activity.findViewById(R.id.btn_switch_to_photo);
-        if (btnPhoto != null) {
-            btnPhoto.setOnClickListener(v -> {
-                if (main_activity.getPreview() != null && main_activity.getPreview().isVideo()) {
-                    main_activity.clickedSwitchVideo(v);
-                }
-                selectPixelMode(PixelCameraMode.PHOTO);
-            });
-        }
+        try {
+            // Switch to Photo button
+            View btnPhoto = main_activity.findViewById(R.id.btn_switch_to_photo);
+            if (btnPhoto != null) {
+                btnPhoto.setOnClickListener(v -> {
+                    if (main_activity.getPreview() != null && main_activity.getPreview().isVideo()) {
+                        main_activity.clickedSwitchVideo(v);
+                    }
+                    selectPixelMode(PixelCameraMode.PHOTO);
+                });
+            }
 
-        // Switch to Video button
-        View btnVideo = main_activity.findViewById(R.id.btn_switch_to_video);
-        if (btnVideo != null) {
-            btnVideo.setOnClickListener(v -> {
-                if (main_activity.getPreview() != null && !main_activity.getPreview().isVideo()) {
-                    main_activity.clickedSwitchVideo(v);
-                }
-                selectPixelMode(PixelCameraMode.VIDEO);
-            });
-        }
+            // Switch to Video button
+            View btnVideo = main_activity.findViewById(R.id.btn_switch_to_video);
+            if (btnVideo != null) {
+                btnVideo.setOnClickListener(v -> {
+                    if (main_activity.getPreview() != null && !main_activity.getPreview().isVideo()) {
+                        main_activity.clickedSwitchVideo(v);
+                    }
+                    selectPixelMode(PixelCameraMode.VIDEO);
+                });
+            }
 
-        // Zoom 1x / 2x pill buttons
-        final TextView zoom1x = main_activity.findViewById(R.id.zoom_btn_1x);
-        final TextView zoom2x = main_activity.findViewById(R.id.zoom_btn_2x);
-        if (zoom1x != null) {
-            zoom1x.setOnClickListener(v -> {
-                Preview preview = main_activity.getPreview();
-                if (preview != null && preview.getCameraController() != null) {
-                    preview.zoomTo(0, true, false);
-                    updateZoomPillUI(0);
-                }
-            });
-        }
-        if (zoom2x != null) {
-            zoom2x.setOnClickListener(v -> {
-                Preview preview = main_activity.getPreview();
-                if (preview != null && preview.getCameraController() != null) {
-                    int maxZoom = preview.getMaxZoom();
-                    int targetZoom = Math.min(maxZoom, Math.max(1, maxZoom / 3));
-                    preview.zoomTo(targetZoom, true, false);
-                    updateZoomPillUI(targetZoom);
-                }
-            });
-        }
+            // Zoom 1x / 2x pill buttons
+            final TextView zoom1x = main_activity.findViewById(R.id.zoom_btn_1x);
+            final TextView zoom2x = main_activity.findViewById(R.id.zoom_btn_2x);
+            if (zoom1x != null) {
+                zoom1x.setOnClickListener(v -> {
+                    Preview preview = main_activity.getPreview();
+                    if (preview != null && preview.getCameraController() != null) {
+                        preview.zoomTo(0, true, false);
+                        updateZoomPillUI(0);
+                    }
+                });
+            }
+            if (zoom2x != null) {
+                zoom2x.setOnClickListener(v -> {
+                    Preview preview = main_activity.getPreview();
+                    if (preview != null && preview.getCameraController() != null) {
+                        int maxZoom = preview.getMaxZoom();
+                        int targetZoom = Math.min(maxZoom, Math.max(1, maxZoom / 3));
+                        preview.zoomTo(targetZoom, true, false);
+                        updateZoomPillUI(targetZoom);
+                    }
+                });
+            }
 
-        // 4K / Resolution Badge (floating window popup)
-        View resBadge = main_activity.findViewById(R.id.pixel_video_res_badge);
-        if (resBadge != null) {
-            resBadge.setOnClickListener(v -> {
-                PixelFloatingDialogManager.showVideoResolutionDialog(main_activity);
-            });
-        }
+            // 4K / Resolution Badge (floating window popup)
+            View resBadge = main_activity.findViewById(R.id.pixel_video_res_badge);
+            if (resBadge != null) {
+                resBadge.setOnClickListener(v -> {
+                    PixelFloatingDialogManager.showVideoResolutionDialog(main_activity);
+                });
+            }
 
-        // Mode Carousel Click Handlers
-        View modePortrait = main_activity.findViewById(R.id.mode_portrait);
-        if (modePortrait != null) {
-            modePortrait.setOnClickListener(v -> {
-                if (main_activity.getPreview() != null && main_activity.getPreview().isVideo()) {
-                    main_activity.clickedSwitchVideo(null);
-                }
-                selectPixelMode(PixelCameraMode.PORTRAIT);
-            });
-        }
+            // Mode Carousel Click Handlers
+            View modePortrait = main_activity.findViewById(R.id.mode_portrait);
+            if (modePortrait != null) {
+                modePortrait.setOnClickListener(v -> {
+                    if (main_activity.getPreview() != null && main_activity.getPreview().isVideo()) {
+                        main_activity.clickedSwitchVideo(null);
+                    }
+                    selectPixelMode(PixelCameraMode.PORTRAIT);
+                });
+            }
 
-        View modePhoto = main_activity.findViewById(R.id.mode_photo);
-        if (modePhoto != null) {
-            modePhoto.setOnClickListener(v -> {
-                if (main_activity.getPreview() != null && main_activity.getPreview().isVideo()) {
-                    main_activity.clickedSwitchVideo(null);
-                }
-                selectPixelMode(PixelCameraMode.PHOTO);
-            });
-        }
+            View modePhoto = main_activity.findViewById(R.id.mode_photo);
+            if (modePhoto != null) {
+                modePhoto.setOnClickListener(v -> {
+                    if (main_activity.getPreview() != null && main_activity.getPreview().isVideo()) {
+                        main_activity.clickedSwitchVideo(null);
+                    }
+                    selectPixelMode(PixelCameraMode.PHOTO);
+                });
+            }
 
-        View modeNight = main_activity.findViewById(R.id.mode_night_sight);
-        if (modeNight != null) {
-            modeNight.setOnClickListener(v -> {
-                if (main_activity.getPreview() != null && main_activity.getPreview().isVideo()) {
-                    main_activity.clickedSwitchVideo(null);
-                }
-                selectPixelMode(PixelCameraMode.NIGHT_SIGHT);
-            });
-        }
+            View modeNight = main_activity.findViewById(R.id.mode_night_sight);
+            if (modeNight != null) {
+                modeNight.setOnClickListener(v -> {
+                    if (main_activity.getPreview() != null && main_activity.getPreview().isVideo()) {
+                        main_activity.clickedSwitchVideo(null);
+                    }
+                    selectPixelMode(PixelCameraMode.NIGHT_SIGHT);
+                });
+            }
 
-        View modePanorama = main_activity.findViewById(R.id.mode_panorama);
-        if (modePanorama != null) {
-            modePanorama.setOnClickListener(v -> {
-                if (main_activity.getPreview() != null && main_activity.getPreview().isVideo()) {
-                    main_activity.clickedSwitchVideo(null);
-                }
-                selectPixelMode(PixelCameraMode.PANORAMA);
-            });
-        }
+            View modePanorama = main_activity.findViewById(R.id.mode_panorama);
+            if (modePanorama != null) {
+                modePanorama.setOnClickListener(v -> {
+                    if (main_activity.getPreview() != null && main_activity.getPreview().isVideo()) {
+                        main_activity.clickedSwitchVideo(null);
+                    }
+                    selectPixelMode(PixelCameraMode.PANORAMA);
+                });
+            }
 
-        View modeVideo = main_activity.findViewById(R.id.mode_video);
-        if (modeVideo != null) {
-            modeVideo.setOnClickListener(v -> {
-                if (main_activity.getPreview() != null && !main_activity.getPreview().isVideo()) {
-                    main_activity.clickedSwitchVideo(null);
-                }
-                selectPixelMode(PixelCameraMode.VIDEO);
-            });
-        }
+            View modeVideo = main_activity.findViewById(R.id.mode_video);
+            if (modeVideo != null) {
+                modeVideo.setOnClickListener(v -> {
+                    if (main_activity.getPreview() != null && !main_activity.getPreview().isVideo()) {
+                        main_activity.clickedSwitchVideo(null);
+                    }
+                    selectPixelMode(PixelCameraMode.VIDEO);
+                });
+            }
 
-        View modeSlowMotion = main_activity.findViewById(R.id.mode_slow_motion);
-        if (modeSlowMotion != null) {
-            modeSlowMotion.setOnClickListener(v -> {
-                if (main_activity.getPreview() != null && !main_activity.getPreview().isVideo()) {
-                    main_activity.clickedSwitchVideo(null);
-                }
-                selectPixelMode(PixelCameraMode.SLOW_MOTION);
-            });
-        }
+            View modeSlowMotion = main_activity.findViewById(R.id.mode_slow_motion);
+            if (modeSlowMotion != null) {
+                modeSlowMotion.setOnClickListener(v -> {
+                    if (main_activity.getPreview() != null && !main_activity.getPreview().isVideo()) {
+                        main_activity.clickedSwitchVideo(null);
+                    }
+                    selectPixelMode(PixelCameraMode.SLOW_MOTION);
+                });
+            }
 
-        updatePixelCameraUI();
+            updatePixelCameraUI();
+        }
+        catch(Throwable t) {
+            Log.e(TAG, "Error in initPixelCameraUI", t);
+        }
     }
 
     public void selectPixelMode(PixelCameraMode mode) {
@@ -3732,99 +3729,104 @@ public class MainUI {
     }
 
     private void doUpdatePixelCameraUI() {
-        Preview preview = main_activity.getPreview();
-        boolean isVideo = (preview != null && preview.isVideo());
+        try {
+            Preview preview = main_activity != null ? main_activity.getPreview() : null;
+            boolean isVideo = (preview != null && preview.isVideo());
 
-        View indicatorPhoto = main_activity.findViewById(R.id.iv_indicator_photo);
-        ImageView iconPhoto = main_activity.findViewById(R.id.iv_icon_photo);
-        View indicatorVideo = main_activity.findViewById(R.id.iv_indicator_video);
-        ImageView iconVideo = main_activity.findViewById(R.id.iv_icon_video);
+            View indicatorPhoto = main_activity.findViewById(R.id.iv_indicator_photo);
+            ImageView iconPhoto = main_activity.findViewById(R.id.iv_icon_photo);
+            View indicatorVideo = main_activity.findViewById(R.id.iv_indicator_video);
+            ImageView iconVideo = main_activity.findViewById(R.id.iv_icon_video);
 
-        TextView resBadge = main_activity.findViewById(R.id.pixel_video_res_badge);
+            TextView resBadge = main_activity.findViewById(R.id.pixel_video_res_badge);
 
-        TextView modePortrait = main_activity.findViewById(R.id.mode_portrait);
-        TextView modePhoto = main_activity.findViewById(R.id.mode_photo);
-        TextView modeNight = main_activity.findViewById(R.id.mode_night_sight);
-        TextView modePanorama = main_activity.findViewById(R.id.mode_panorama);
-        TextView modeVideo = main_activity.findViewById(R.id.mode_video);
-        TextView modeSlowMotion = main_activity.findViewById(R.id.mode_slow_motion);
+            TextView modePortrait = main_activity.findViewById(R.id.mode_portrait);
+            TextView modePhoto = main_activity.findViewById(R.id.mode_photo);
+            TextView modeNight = main_activity.findViewById(R.id.mode_night_sight);
+            TextView modePanorama = main_activity.findViewById(R.id.mode_panorama);
+            TextView modeVideo = main_activity.findViewById(R.id.mode_video);
+            TextView modeSlowMotion = main_activity.findViewById(R.id.mode_slow_motion);
 
-        if (isVideo) {
-            if (indicatorPhoto != null) indicatorPhoto.setVisibility(View.GONE);
-            if (iconPhoto != null) iconPhoto.setColorFilter(Color.parseColor("#888888"));
-            if (indicatorVideo != null) indicatorVideo.setVisibility(View.VISIBLE);
-            if (iconVideo != null) iconVideo.setColorFilter(Color.parseColor("#000000"));
+            if (isVideo) {
+                if (indicatorPhoto != null) indicatorPhoto.setVisibility(View.GONE);
+                if (iconPhoto != null) iconPhoto.setColorFilter(Color.parseColor("#888888"));
+                if (indicatorVideo != null) indicatorVideo.setVisibility(View.VISIBLE);
+                if (iconVideo != null) iconVideo.setColorFilter(Color.parseColor("#000000"));
 
-            // Carousel video modes
-            if (modePortrait != null) modePortrait.setVisibility(View.GONE);
-            if (modePhoto != null) modePhoto.setVisibility(View.GONE);
-            if (modeNight != null) modeNight.setVisibility(View.GONE);
-            if (modePanorama != null) modePanorama.setVisibility(View.GONE);
-            if (modeVideo != null) modeVideo.setVisibility(View.VISIBLE);
-            if (modeSlowMotion != null) modeSlowMotion.setVisibility(View.VISIBLE);
+                // Carousel video modes
+                if (modePortrait != null) modePortrait.setVisibility(View.GONE);
+                if (modePhoto != null) modePhoto.setVisibility(View.GONE);
+                if (modeNight != null) modeNight.setVisibility(View.GONE);
+                if (modePanorama != null) modePanorama.setVisibility(View.GONE);
+                if (modeVideo != null) modeVideo.setVisibility(View.VISIBLE);
+                if (modeSlowMotion != null) modeSlowMotion.setVisibility(View.VISIBLE);
 
-            if (currentPixelMode == PixelCameraMode.SLOW_MOTION) {
-                setModePillSelected(modeSlowMotion, true);
-                setModePillSelected(modeVideo, false);
-            } else {
-                setModePillSelected(modeVideo, true);
-                setModePillSelected(modeSlowMotion, false);
-            }
-
-            // Top-left Video Resolution Badge ("4K", "FHD", etc.)
-            if (resBadge != null) {
-                resBadge.setVisibility(View.VISIBLE);
-                String currentVal = "";
-                if (preview.getVideoQualityHander() != null) {
-                    currentVal = preview.getVideoQualityHander().getCurrentVideoQuality();
+                if (currentPixelMode == PixelCameraMode.SLOW_MOTION) {
+                    setModePillSelected(modeSlowMotion, true);
+                    setModePillSelected(modeVideo, false);
+                } else {
+                    setModePillSelected(modeVideo, true);
+                    setModePillSelected(modeSlowMotion, false);
                 }
-                String label = "4K";
-                if (currentVal != null) {
-                    String lower = currentVal.toLowerCase();
-                    if (lower.contains("2160") || lower.contains("4k") || lower.contains("uhd")) {
-                        label = "4K";
-                    } else if (lower.contains("1080") || lower.contains("fhd")) {
-                        label = "FHD";
-                    } else if (lower.contains("720") || lower.contains("hd")) {
-                        label = "HD";
-                    } else if (lower.contains("480") || lower.contains("sd")) {
-                        label = "SD";
+
+                // Top-left Video Resolution Badge ("4K", "FHD", etc.)
+                if (resBadge != null) {
+                    resBadge.setVisibility(View.VISIBLE);
+                    String currentVal = "";
+                    if (preview != null && preview.getVideoQualityHander() != null) {
+                        currentVal = preview.getVideoQualityHander().getCurrentVideoQuality();
                     }
+                    String label = "4K";
+                    if (currentVal != null) {
+                        String lower = currentVal.toLowerCase();
+                        if (lower.contains("2160") || lower.contains("4k") || lower.contains("uhd")) {
+                            label = "4K";
+                        } else if (lower.contains("1080") || lower.contains("fhd")) {
+                            label = "FHD";
+                        } else if (lower.contains("720") || lower.contains("hd")) {
+                            label = "HD";
+                        } else if (lower.contains("480") || lower.contains("sd")) {
+                            label = "SD";
+                        }
+                    }
+                    resBadge.setText(label);
                 }
-                resBadge.setText(label);
+            } else {
+                if (indicatorPhoto != null) indicatorPhoto.setVisibility(View.VISIBLE);
+                if (iconPhoto != null) iconPhoto.setColorFilter(Color.parseColor("#000000"));
+                if (indicatorVideo != null) indicatorVideo.setVisibility(View.GONE);
+                if (iconVideo != null) iconVideo.setColorFilter(Color.parseColor("#888888"));
+
+                // Carousel photo modes
+                if (modePortrait != null) modePortrait.setVisibility(View.VISIBLE);
+                if (modePhoto != null) modePhoto.setVisibility(View.VISIBLE);
+                if (modeNight != null) modeNight.setVisibility(View.VISIBLE);
+                if (modePanorama != null) modePanorama.setVisibility(View.VISIBLE);
+                if (modeVideo != null) modeVideo.setVisibility(View.GONE);
+                if (modeSlowMotion != null) modeSlowMotion.setVisibility(View.GONE);
+
+                setModePillSelected(modePortrait, currentPixelMode == PixelCameraMode.PORTRAIT);
+                setModePillSelected(modePhoto, currentPixelMode == PixelCameraMode.PHOTO || currentPixelMode == PixelCameraMode.VIDEO || currentPixelMode == PixelCameraMode.SLOW_MOTION);
+                setModePillSelected(modeNight, currentPixelMode == PixelCameraMode.NIGHT_SIGHT);
+                setModePillSelected(modePanorama, currentPixelMode == PixelCameraMode.PANORAMA);
+
+                if (resBadge != null) {
+                    resBadge.setVisibility(View.GONE);
+                }
             }
-        } else {
-            if (indicatorPhoto != null) indicatorPhoto.setVisibility(View.VISIBLE);
-            if (iconPhoto != null) iconPhoto.setColorFilter(Color.parseColor("#000000"));
-            if (indicatorVideo != null) indicatorVideo.setVisibility(View.GONE);
-            if (iconVideo != null) iconVideo.setColorFilter(Color.parseColor("#888888"));
 
-            // Carousel photo modes
-            if (modePortrait != null) modePortrait.setVisibility(View.VISIBLE);
-            if (modePhoto != null) modePhoto.setVisibility(View.VISIBLE);
-            if (modeNight != null) modeNight.setVisibility(View.VISIBLE);
-            if (modePanorama != null) modePanorama.setVisibility(View.VISIBLE);
-            if (modeVideo != null) modeVideo.setVisibility(View.GONE);
-            if (modeSlowMotion != null) modeSlowMotion.setVisibility(View.GONE);
-
-            setModePillSelected(modePortrait, currentPixelMode == PixelCameraMode.PORTRAIT);
-            setModePillSelected(modePhoto, currentPixelMode == PixelCameraMode.PHOTO || currentPixelMode == PixelCameraMode.VIDEO || currentPixelMode == PixelCameraMode.SLOW_MOTION);
-            setModePillSelected(modeNight, currentPixelMode == PixelCameraMode.NIGHT_SIGHT);
-            setModePillSelected(modePanorama, currentPixelMode == PixelCameraMode.PANORAMA);
-
-            if (resBadge != null) {
-                resBadge.setVisibility(View.GONE);
+            // Shutter Button Appearance
+            ImageButton takePhotoButton = main_activity.findViewById(R.id.take_photo);
+            if (takePhotoButton != null) {
+                if (isVideo) {
+                    takePhotoButton.setImageResource(R.drawable.take_video_selector);
+                } else {
+                    takePhotoButton.setImageResource(R.drawable.take_photo_selector);
+                }
             }
         }
-
-        // Shutter Button Appearance
-        ImageButton takePhotoButton = main_activity.findViewById(R.id.take_photo);
-        if (takePhotoButton != null) {
-            if (isVideo) {
-                takePhotoButton.setImageResource(R.drawable.take_video_selector);
-            } else {
-                takePhotoButton.setImageResource(R.drawable.take_photo_selector);
-            }
+        catch(Throwable t) {
+            Log.e(TAG, "Error in doUpdatePixelCameraUI", t);
         }
     }
 
