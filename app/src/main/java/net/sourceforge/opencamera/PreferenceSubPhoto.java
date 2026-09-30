@@ -103,6 +103,35 @@ public class PreferenceSubPhoto extends PreferenceSubScreen {
             lp.setValue(resolution_value);
             // now set the key, so we save for the correct cameraId
             lp.setKey(resolution_preference_key);
+
+            lp.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference) {
+                    final CharSequence[] curEntries = lp.getEntries();
+                    final CharSequence[] curValues = lp.getEntryValues();
+                    String curVal = lp.getValue();
+                    net.sourceforge.opencamera.ui.PixelFloatingDialogManager.showFloatingDialog(
+                            getActivity(),
+                            "Photo Resolution",
+                            "Select image capture size and aspect ratio",
+                            curEntries,
+                            curValues,
+                            curVal,
+                            new net.sourceforge.opencamera.ui.PixelFloatingDialogManager.OnOptionSelectedListener() {
+                                @Override
+                                public void onOptionSelected(int index, String value, String title) {
+                                    lp.setValue(value);
+                                    if (lp.getOnPreferenceChangeListener() != null) {
+                                        lp.getOnPreferenceChangeListener().onPreferenceChange(lp, value);
+                                    }
+                                    SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getActivity());
+                                    sp.edit().putString(lp.getKey(), value).apply();
+                                }
+                            }
+                    );
+                    return true;
+                }
+            });
         }
         else {
             Preference pref = findPreference("preference_resolution");
@@ -128,6 +157,14 @@ public class PreferenceSubPhoto extends PreferenceSubScreen {
             ListPreference pref = (ListPreference)findPreference("preference_image_format");
             pref.setEntries(R.array.preference_image_format_entries_nojpegr);
             pref.setEntryValues(R.array.preference_image_format_values_nojpegr);
+        }
+        {
+            ListPreference formatLp = (ListPreference) findPreference("preference_image_format");
+            if (formatLp != null) {
+                net.sourceforge.opencamera.ui.PixelFloatingDialogManager.hookListPreferenceWithFloatingDialog(
+                        getActivity(), formatLp, "Select photo format"
+                );
+            }
         }
 
         if( !supports_raw ) {

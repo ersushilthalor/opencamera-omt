@@ -107,6 +107,36 @@ public class PreferenceSubVideo extends PreferenceSubScreen {
             lp.setKey(video_quality_preference_key);
             lp.setValue(video_quality_value);
 
+            // Hook up modern floating dialog window
+            lp.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+                @Override
+                public boolean onPreferenceClick(Preference preference) {
+                    final CharSequence[] curEntries = lp.getEntries();
+                    final CharSequence[] curValues = lp.getEntryValues();
+                    String curVal = lp.getValue();
+                    net.sourceforge.opencamera.ui.PixelFloatingDialogManager.showFloatingDialog(
+                            getActivity(),
+                            lp.getTitle() != null ? lp.getTitle().toString() : "Video Resolution",
+                            "Select video resolution and format",
+                            curEntries,
+                            curValues,
+                            curVal,
+                            new net.sourceforge.opencamera.ui.PixelFloatingDialogManager.OnOptionSelectedListener() {
+                                @Override
+                                public void onOptionSelected(int index, String value, String title) {
+                                    lp.setValue(value);
+                                    if (lp.getOnPreferenceChangeListener() != null) {
+                                        lp.getOnPreferenceChangeListener().onPreferenceChange(lp, value);
+                                    }
+                                    SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getActivity());
+                                    sp.edit().putString(lp.getKey(), value).apply();
+                                }
+                            }
+                    );
+                    return true;
+                }
+            });
+
             boolean is_high_speed = bundle.getBoolean("video_is_high_speed");
             String title = is_high_speed
                     ? getResources().getString(R.string.video_quality) + " ["
@@ -149,6 +179,30 @@ public class PreferenceSubVideo extends PreferenceSubScreen {
             lp.setValue(fps_value);
             // now set the key, so we save for the correct cameraId
             lp.setKey(fps_preference_key);
+            net.sourceforge.opencamera.ui.PixelFloatingDialogManager.hookListPreferenceWithFloatingDialog(
+                    getActivity(), lp, "Select video frame rate (FPS)"
+            );
+        }
+
+        {
+            ListPreference bitrateLp = (ListPreference) findPreference("preference_video_bitrate");
+            if (bitrateLp != null) {
+                net.sourceforge.opencamera.ui.PixelFloatingDialogManager.hookListPreferenceWithFloatingDialog(
+                        getActivity(), bitrateLp, "Select video encoding bitrate"
+                );
+            }
+            ListPreference maxDurationLp = (ListPreference) findPreference("preference_video_max_duration");
+            if (maxDurationLp != null) {
+                net.sourceforge.opencamera.ui.PixelFloatingDialogManager.hookListPreferenceWithFloatingDialog(
+                        getActivity(), maxDurationLp, "Select maximum recording length"
+                );
+            }
+            ListPreference restartLp = (ListPreference) findPreference("preference_video_restart");
+            if (restartLp != null) {
+                net.sourceforge.opencamera.ui.PixelFloatingDialogManager.hookListPreferenceWithFloatingDialog(
+                        getActivity(), restartLp, "Select video restart repeat count"
+                );
+            }
         }
 
         if (!supports_tonemap_curve && (camera_open

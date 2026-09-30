@@ -1,0 +1,6 @@
+{
+  "name": "Open Camera OMT",
+  "description": "Camera app with OMT streaming and modern Pixel Camera redesign",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

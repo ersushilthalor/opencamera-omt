@@ -42,6 +42,9 @@ import android.util.Log;
 import android.view.Display;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.view.WindowInsets;
 import android.view.WindowMetrics;
 import android.widget.ScrollView;
@@ -353,6 +356,52 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
                     return false;
                 }
             });
+        }
+
+        {
+            final ListPreference timerLp = (ListPreference) findPreference("preference_timer");
+            if (timerLp != null) {
+                timerLp.setOnPreferenceClickListener(new OnPreferenceClickListener() {
+                    @Override
+                    public boolean onPreferenceClick(Preference preference) {
+                        net.sourceforge.opencamera.ui.PixelFloatingDialogManager.showFloatingDialog(
+                                getActivity(),
+                                timerLp.getTitle() != null ? timerLp.getTitle().toString() : "Timer",
+                                "Select timer delay before capture",
+                                timerLp.getEntries(),
+                                timerLp.getEntryValues(),
+                                timerLp.getValue(),
+                                new net.sourceforge.opencamera.ui.PixelFloatingDialogManager.OnOptionSelectedListener() {
+                                    @Override
+                                    public void onOptionSelected(int index, String value, String title) {
+                                        timerLp.setValue(value);
+                                        if (timerLp.getOnPreferenceChangeListener() != null) {
+                                            timerLp.getOnPreferenceChangeListener().onPreferenceChange(timerLp, value);
+                                        }
+                                        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getActivity());
+                                        sp.edit().putString(timerLp.getKey(), value).apply();
+                                    }
+                                }
+                        );
+                        return true;
+                    }
+                });
+            }
+        }
+
+        {
+            ListPreference burstLp = (ListPreference) findPreference("preference_burst_mode");
+            if (burstLp != null) {
+                net.sourceforge.opencamera.ui.PixelFloatingDialogManager.hookListPreferenceWithFloatingDialog(
+                        getActivity(), burstLp, "Select burst mode repeats"
+                );
+            }
+            ListPreference intervalLp = (ListPreference) findPreference("preference_burst_interval");
+            if (intervalLp != null) {
+                net.sourceforge.opencamera.ui.PixelFloatingDialogManager.hookListPreferenceWithFloatingDialog(
+                        getActivity(), intervalLp, "Select delay between burst shots"
+                );
+            }
         }
 
         {
@@ -739,8 +788,45 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
     }
 
     @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View originalView = super.onCreateView(inflater, container, savedInstanceState);
+
+        LinearLayout root = new LinearLayout(getActivity());
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.parseColor("#121212"));
+
+        View topBar = inflater.inflate(R.layout.pixel_settings_topbar, root, false);
+        ImageButton backBtn = topBar.findViewById(R.id.settings_back_button);
+        if (backBtn != null) {
+            backBtn.setOnClickListener(v -> {
+                if (getActivity() != null) {
+                    getActivity().onBackPressed();
+                }
+            });
+        }
+        TextView titleText = topBar.findViewById(R.id.settings_title_text);
+        if (titleText != null) {
+            titleText.setText(R.string.action_settings);
+        }
+
+        root.addView(topBar);
+        if (originalView != null) {
+            originalView.setBackgroundColor(Color.parseColor("#121212"));
+            root.addView(originalView, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
+        }
+        return root;
+    }
+
+    @Override
     public void onViewCreated(View view, Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
+
+        view.setBackgroundColor(Color.parseColor("#121212"));
+        View listView = view.findViewById(android.R.id.list);
+        if (listView != null) {
+            listView.setBackgroundColor(Color.parseColor("#121212"));
+        }
 
         if( edge_to_edge_mode ) {
             handleEdgeToEdge(view);
@@ -903,22 +989,13 @@ public class MyPreferenceFragment extends PreferenceFragment implements OnShared
     }
 
     static void setBackground(Fragment fragment) {
-        // prevent fragment being transparent
-        // note, setting color here only seems to affect the "main" preference fragment screen, and not sub-screens
-        // note, on Galaxy Nexus Android 4.3 this sets to black rather than the dark grey that the background theme should be (and what the sub-screens use); works okay on Nexus 7 Android 5
-        // we used to use a light theme for the PreferenceFragment, but mixing themes in same activity seems to cause problems (e.g., for EditTextPreference colors)
-        TypedArray array = fragment.getActivity().getTheme().obtainStyledAttributes(new int[] {
-                android.R.attr.colorBackground
-        });
-        int backgroundColor = array.getColor(0, Color.BLACK);
-		/*if( MyDebug.LOG ) {
-			int r = (backgroundColor >> 16) & 0xFF;
-			int g = (backgroundColor >> 8) & 0xFF;
-			int b = (backgroundColor >> 0) & 0xFF;
-			Log.d(TAG, "backgroundColor: " + r + " , " + g + " , " + b);
-		}*/
-        fragment.getView().setBackgroundColor(backgroundColor);
-        array.recycle();
+        if (fragment != null && fragment.getView() != null) {
+            fragment.getView().setBackgroundColor(Color.parseColor("#121212"));
+            View listView = fragment.getView().findViewById(android.R.id.list);
+            if (listView != null) {
+                listView.setBackgroundColor(Color.parseColor("#121212"));
+            }
+        }
     }
 
     @Override

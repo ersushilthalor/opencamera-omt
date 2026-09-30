@@ -10,6 +10,12 @@ import android.util.Log;
 import android.view.View;
 
 import java.util.HashSet;
+import android.graphics.Color;
+import android.view.LayoutInflater;
+import android.view.ViewGroup;
+import android.widget.ImageButton;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 /** Must be used as the parent class for all sub-screens.
  */
@@ -32,6 +38,37 @@ public class PreferenceSubScreen extends PreferenceFragment implements SharedPre
 
         if( MyDebug.LOG )
             Log.d(TAG, "onCreate done");
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View originalView = super.onCreateView(inflater, container, savedInstanceState);
+
+        LinearLayout root = new LinearLayout(getActivity());
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.parseColor("#121212"));
+
+        View topBar = inflater.inflate(R.layout.pixel_settings_topbar, root, false);
+        ImageButton backBtn = topBar.findViewById(R.id.settings_back_button);
+        if (backBtn != null) {
+            backBtn.setOnClickListener(v -> {
+                if (getActivity() != null) {
+                    getActivity().onBackPressed();
+                }
+            });
+        }
+        TextView titleText = topBar.findViewById(R.id.settings_title_text);
+        if (titleText != null && getPreferenceScreen() != null && getPreferenceScreen().getTitle() != null) {
+            titleText.setText(getPreferenceScreen().getTitle());
+        }
+
+        root.addView(topBar);
+        if (originalView != null) {
+            originalView.setBackgroundColor(Color.parseColor("#121212"));
+            root.addView(originalView, new LinearLayout.LayoutParams(
+                    ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.0f));
+        }
+        return root;
     }
 
     @Override
