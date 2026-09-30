@@ -7026,6 +7026,12 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
             return; // Already started or switching, don't do it again
         }
 
+        if (!OMTSender.isNativeAvailable()) {
+            if (MyDebug.LOG)
+                Log.d(TAG, "autoStartOmtAnnouncement: OMT native library not available, skipping auto announcement");
+            return;
+        }
+
         // Check if OMT is enabled
         boolean omtEnabled = applicationInterface.getOmtStreamingEnabled();
 
@@ -7045,8 +7051,9 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
                     SharedPreferences.Editor editor = sharedPreferences.edit();
                     editor.putString(PreferenceKeys.CameraAPIPreferenceKey, "preference_camera_api_camera2");
                     editor.apply();
-                    // Recreate activity to apply camera API change
-                    recreate();
+                    if (!isFinishing() && !isDestroyed()) {
+                        recreate();
+                    }
                 }
                 return;
             }
@@ -7057,7 +7064,11 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
 
             // Delay slightly to ensure camera is fully ready
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                startOmtAnnouncement();
+                try {
+                    startOmtAnnouncement();
+                } catch (Throwable t) {
+                    Log.e(TAG, "Exception during auto startOmtAnnouncement", t);
+                }
             }, 500);
         }
     }
@@ -7070,101 +7081,111 @@ public class MainActivity extends AppCompatActivity implements PreferenceFragmen
         if (MyDebug.LOG)
             Log.d(TAG, "startOmtAnnouncement");
 
-        if (omtStreamingManager != null && omtStreamingManager.isAnnouncing()) {
-            if (MyDebug.LOG)
-                Log.d(TAG, "Already announcing");
-            return;
-        }
+        try {
+            if (!OMTSender.isNativeAvailable()) {
+                if (MyDebug.LOG)
+                    Log.w(TAG, "OMT native library not available, cannot start announcement");
+                return;
+            }
 
-        // Get streaming settings for announcement
-        String streamName = applicationInterface.getOmtStreamingName();
-        int quality = applicationInterface.getOmtStreamingQuality();
+            if (omtStreamingManager != null && omtStreamingManager.isAnnouncing()) {
+                if (MyDebug.LOG)
+                    Log.d(TAG, "Already announcing");
+                return;
+            }
 
-        // Get current video profile for resolution info
-        VideoProfile profile = preview.getVideoProfile();
-        int width = profile.videoFrameWidth;
-        int height = profile.videoFrameHeight;
-        int fps = profile.videoCaptureRate > 0 ? (int) profile.videoCaptureRate : 30;
+            // Get streaming settings for announcement
+            String streamName = applicationInterface.getOmtStreamingName();
+            int quality = applicationInterface.getOmtStreamingQuality();
 
-        if (MyDebug.LOG) {
-            Log.d(TAG, "OMT announcement: " + streamName + " (" + width + "x" + height + "@" + fps + "fps)");
-        }
+            // Get current video profile for resolution info
+            VideoProfile profile = preview != null ? preview.getVideoProfile() : null;
+            int width = (profile != null && profile.videoFrameWidth > 0) ? profile.videoFrameWidth : 1920;
+            int height = (profile != null && profile.videoFrameHeight > 0) ? profile.videoFrameHeight : 1080;
+            int fps = (profile != null && profile.videoCaptureRate > 0) ? (int) profile.videoCaptureRate : 30;
 
-        // Create streaming manager if needed
-        if (omtStreamingManager == null) {
-            omtStreamingManager = new OMTStreamingManager(this, new OMTStreamingManager.StreamingCallback() {
-                @Override
-                public void onAnnouncingStarted() {
-                    runOnUiThread(() -> {
-                        if (MyDebug.LOG)
-                            Log.d(TAG, "OMT announcement started - device is now discoverable");
-                        // Update UI to show we're discoverable but not streaming yet
-                        updateOmtStreamingUI(false);
-                    });
-                }
+            if (MyDebug.LOG) {
+                Log.d(TAG, "OMT announcement: " + streamName + " (" + width + "x" + height + "@" + fps + "fps)");
+            }
 
-                @Override
-                public void onStreamingStarted() {
-                    runOnUiThread(() -> {
-                        preview.showToast(null, R.string.omt_streaming_started, true);
-                        updateOmtStreamingUI(true);
-                    });
-                }
+            // Create streaming manager if needed
+            if (omtStreamingManager == null) {
+                omtStreamingManager = new OMTStreamingManager(this, new OMTStreamingManager.StreamingCallback() {
+                    @Override
+                    public void onAnnouncingStarted() {
+                        runOnUiThread(() -> {
+                            if (MyDebug.LOG)
+                                Log.d(TAG, "OMT announcement started - device is now discoverable");
+                            // Update UI to show we're discoverable but not streaming yet
+                            updateOmtStreamingUI(false);
+                        });
+                    }
 
-                @Override
-                public void onStreamingStopped() {
-                    runOnUiThread(() -> {
-                        preview.showToast(null, R.string.omt_streaming_stopped, true);
-                        updateOmtStreamingUI(false);
-                    });
-                }
-
-                @Override
-                public void onStreamingError(String error) {
-                    runOnUiThread(() -> {
-                        preview.showToast(null, getString(R.string.omt_streaming_failed) + ": " + error, true);
-                        updateOmtStreamingUI(false);
-                    });
-                }
-
-                @Override
-                public void onConnectionCountChanged(int count) {
-                    runOnUiThread(() -> {
-                        // Update connection count in status text if needed
-                        if (isOmtStreaming()) {
+                    @Override
+                    public void onStreamingStarted() {
+                        runOnUiThread(() -> {
+                            preview.showToast(null, R.string.omt_streaming_started, true);
                             updateOmtStreamingUI(true);
-                        }
-                    });
-                }
+                        });
+                    }
 
-                @Override
-                public void onQualityChanged(int profile) {
-                    runOnUiThread(() -> {
-                        String preset = getOmtProfileDisplayName(profile);
-                        updateOmtStatusText("Quality Adjusted: VMX " + preset);
-                    });
-                }
+                    @Override
+                    public void onStreamingStopped() {
+                        runOnUiThread(() -> {
+                            preview.showToast(null, R.string.omt_streaming_stopped, true);
+                            updateOmtStreamingUI(false);
+                        });
+                    }
 
-                @Override
-                public void onFramesDropped(long droppedCount, long totalDropped, long totalSent) {
-                    runOnUiThread(() -> {
-                        // Show warning toast about frame drops
-                        float dropRate = totalSent > 0 ? (totalDropped * 100f / totalSent) : 0f;
-                        String warning = getString(R.string.omt_frames_dropped, droppedCount,
-                                String.format("%.1f", dropRate));
-                        preview.showToast(null, warning, false);
+                    @Override
+                    public void onStreamingError(String error) {
+                        runOnUiThread(() -> {
+                            preview.showToast(null, getString(R.string.omt_streaming_failed) + ": " + error, true);
+                            updateOmtStreamingUI(false);
+                        });
+                    }
 
-                        // Update status text if we have severe drops
-                        if (droppedCount > 5) {
-                            updateOmtStatusText("⚠ " + droppedCount + " frames dropped - network congestion");
-                        }
-                    });
-                }
-            });
+                    @Override
+                    public void onConnectionCountChanged(int count) {
+                        runOnUiThread(() -> {
+                            // Update connection count in status text if needed
+                            if (isOmtStreaming()) {
+                                updateOmtStreamingUI(true);
+                            }
+                        });
+                    }
+
+                    @Override
+                    public void onQualityChanged(int profile) {
+                        runOnUiThread(() -> {
+                            String preset = getOmtProfileDisplayName(profile);
+                            updateOmtStatusText("Quality Adjusted: VMX " + preset);
+                        });
+                    }
+
+                    @Override
+                    public void onFramesDropped(long droppedCount, long totalDropped, long totalSent) {
+                        runOnUiThread(() -> {
+                            // Show warning toast about frame drops
+                            float dropRate = totalSent > 0 ? (totalDropped * 100f / totalSent) : 0f;
+                            String warning = getString(R.string.omt_frames_dropped, droppedCount,
+                                    String.format("%.1f", dropRate));
+                            preview.showToast(null, warning, false);
+
+                            // Update status text if we have severe drops
+                            if (droppedCount > 5) {
+                                updateOmtStatusText("⚠ " + droppedCount + " frames dropped - network congestion");
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Start announcement only (no video streaming yet)
+            omtStreamingManager.startAnnouncing(width, height, fps, quality, streamName);
+        } catch (Throwable t) {
+            Log.e(TAG, "Failed in startOmtAnnouncement", t);
         }
-
-        // Start announcement only (no video streaming yet)
-        omtStreamingManager.startAnnouncing(width, height, fps, quality, streamName);
     }
 
     public static long performHapticFeedback(SeekBar seekBar, long last_haptic_time) {

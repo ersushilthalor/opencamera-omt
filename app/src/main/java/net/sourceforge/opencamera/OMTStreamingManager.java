@@ -118,6 +118,14 @@ public class OMTStreamingManager {
         this.streamQuality = quality;
         this.streamName = name;
 
+        if (!OMTSender.isNativeAvailable()) {
+            Log.w(TAG, "OMT native libraries not available, skipping announcement");
+            if (callback != null) {
+                callback.onStreamingError("OMT native libraries not available on this platform");
+            }
+            return false;
+        }
+
         Log.i(TAG, "Starting OMT announcement: " + name + " (" + width + "x" + height + "@" + fps + "fps)");
 
         try {
@@ -152,7 +160,7 @@ public class OMTStreamingManager {
             }
 
             return true;
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.e(TAG, "Failed to start announcement: " + e.getMessage());
             cleanupAnnouncement();
             if (callback != null) {
@@ -214,7 +222,7 @@ public class OMTStreamingManager {
 
             return true;
 
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.e(TAG, "Error starting streaming: " + e.getMessage(), e);
             cleanupStreaming();
             if (callback != null) {

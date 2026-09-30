@@ -32,7 +32,16 @@ public class OMTSender {
     public static final int QUALITY_MEDIUM = 50; // ~100 Mbps @ 1080p30
     public static final int QUALITY_HIGH = 100; // ~130 Mbps @ 1080p30 (Wired/Wi-Fi 6 only)
 
+    private static boolean isNativeLoaded = false;
     private boolean isInitialized = false;
+
+    public static boolean isNativeAvailable() {
+        return isNativeLoaded;
+    }
+
+    public static boolean isNativeLoaded() {
+        return isNativeLoaded;
+    }
 
     // Static block to load native libraries
     static {
@@ -48,9 +57,10 @@ public class OMTSender {
             // Load our OMT bridge library with the JNI functions
             System.loadLibrary("omtbridge");
             Log.i(TAG, "Loaded libomtbridge.so");
-        } catch (UnsatisfiedLinkError e) {
-            Log.e(TAG, "Failed to load native libraries: " + e.getMessage());
-            throw e;
+            isNativeLoaded = true;
+        } catch (Throwable e) {
+            Log.w(TAG, "Failed to load native libraries (OMT streaming will be disabled): " + e.getMessage());
+            isNativeLoaded = false;
         }
     }
 
@@ -65,12 +75,22 @@ public class OMTSender {
      * @return true if initialization succeeded
      */
     public boolean init(String name, int width, int height, int frameRate, int quality) {
+        if (!isNativeLoaded) {
+            Log.w(TAG, "Cannot init OMTSender: native libraries not loaded");
+            return false;
+        }
+
         if (isInitialized) {
             Log.w(TAG, "OMTSender already initialized, cleaning up first");
             cleanup();
         }
 
-        isInitialized = nativeInit(name, width, height, frameRate, 1, quality);
+        try {
+            isInitialized = nativeInit(name, width, height, frameRate, 1, quality);
+        } catch (Throwable t) {
+            Log.e(TAG, "Exception calling nativeInit", t);
+            isInitialized = false;
+        }
 
         if (isInitialized) {
             Log.i(TAG, "OMT Sender initialized: " + name + " (" + width + "x" + height + " @ " + frameRate
@@ -87,8 +107,12 @@ public class OMTSender {
      * Must be called after init().
      */
     public void setSenderInfo(String productName, String manufacturer) {
-        if (isInitialized) {
-            nativeSetSenderInfo(productName, manufacturer);
+        if (isNativeLoaded && isInitialized) {
+            try {
+                nativeSetSenderInfo(productName, manufacturer);
+            } catch (Throwable t) {
+                Log.e(TAG, "Exception calling nativeSetSenderInfo", t);
+            }
         }
     }
 
@@ -115,8 +139,8 @@ public class OMTSender {
      * @return true if frame was sent successfully
      */
     public boolean sendFrame(ByteBuffer buffer, int width, int height, int yStride, int uvStride) {
-        if (!isInitialized) {
-            Log.e(TAG, "Cannot send frame: OMTSender not initialized");
+        if (!isNativeLoaded || !isInitialized) {
+            Log.e(TAG, "Cannot send frame: OMTSender not initialized or native library unavailable");
             return false;
         }
 
@@ -125,14 +149,24 @@ public class OMTSender {
             return false;
         }
 
-        return nativeSendFrame(buffer, width, height, yStride, uvStride);
+        try {
+            return nativeSendFrame(buffer, width, height, yStride, uvStride);
+        } catch (Throwable t) {
+            Log.e(TAG, "Exception calling nativeSendFrame", t);
+            return false;
+        }
     }
 
     /**
      * Get the number of currently connected receivers.
      */
     public int getConnectionCount() {
-        return isInitialized ? nativeGetConnectionCount() : 0;
+        if (!isNativeLoaded || !isInitialized) return 0;
+        try {
+            return nativeGetConnectionCount();
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     /**
@@ -140,14 +174,19 @@ public class OMTSender {
      * Format: "HOSTNAME (Name)"
      */
     public String getAddress() {
-        return isInitialized ? nativeGetAddress() : null;
+        if (!isNativeLoaded || !isInitialized) return null;
+        try {
+            return nativeGetAddress();
+        } catch (Throwable t) {
+            return null;
+        }
     }
 
     /**
      * Check if OMT sender is currently initialized and ready.
      */
     public boolean isReady() {
-        return isInitialized;
+        return isNativeLoaded && isInitialized;
     }
 
     /**
@@ -155,10 +194,16 @@ public class OMTSender {
      * Call this when streaming is stopped.
      */
     public void cleanup() {
-        if (isInitialized) {
-            nativeCleanup();
+        if (isNativeLoaded && isInitialized) {
+            try {
+                nativeCleanup();
+            } catch (Throwable t) {
+                Log.e(TAG, "Exception during nativeCleanup", t);
+            }
             isInitialized = false;
             Log.i(TAG, "OMT Sender cleaned up");
+        } else {
+            isInitialized = false;
         }
     }
 
@@ -168,8 +213,12 @@ public class OMTSender {
      * @param quality Video quality (0=Default, 1=Low, 50=Medium, 100=High)
      */
     public void setQuality(int quality) {
-        if (isInitialized) {
-            nativeSetQuality(quality);
+        if (isNativeLoaded && isInitialized) {
+            try {
+                nativeSetQuality(quality);
+            } catch (Throwable t) {
+                Log.e(TAG, "Exception in nativeSetQuality", t);
+            }
         }
     }
 
@@ -181,7 +230,12 @@ public class OMTSender {
      * Get total frames sent since initialization.
      */
     public long getFramesSent() {
-        return isInitialized ? nativeGetFramesSent() : 0;
+        if (!isNativeLoaded || !isInitialized) return 0;
+        try {
+            return nativeGetFramesSent();
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     /**
@@ -189,7 +243,12 @@ public class OMTSender {
      * Frames are dropped when the receiver can't keep up (network congestion).
      */
     public long getFramesDropped() {
-        return isInitialized ? nativeGetFramesDropped() : 0;
+        if (!isNativeLoaded || !isInitialized) return 0;
+        try {
+            return nativeGetFramesDropped();
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     /**
@@ -199,14 +258,24 @@ public class OMTSender {
      * @return Number of frames dropped since last call
      */
     public long getRecentDropsAndReset() {
-        return isInitialized ? nativeGetRecentDropsAndReset() : 0;
+        if (!isNativeLoaded || !isInitialized) return 0;
+        try {
+            return nativeGetRecentDropsAndReset();
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     /**
      * Get total bytes sent since initialization.
      */
     public long getBytesSent() {
-        return isInitialized ? nativeGetBytesSent() : 0;
+        if (!isNativeLoaded || !isInitialized) return 0;
+        try {
+            return nativeGetBytesSent();
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 
     /**
@@ -252,6 +321,11 @@ public class OMTSender {
      * Get the current VMX profile ID.
      */
     public int getProfile() {
-        return isInitialized ? nativeGetProfile() : 0;
+        if (!isNativeLoaded || !isInitialized) return 0;
+        try {
+            return nativeGetProfile();
+        } catch (Throwable t) {
+            return 0;
+        }
     }
 }
